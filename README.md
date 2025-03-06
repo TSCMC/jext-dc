@@ -18,6 +18,7 @@ Functionality requirements:
 Not requirements but nice-to-have:
 - [ ] Make it with python 3.12 or above with pycord or discord.py as framework and manage dependencies with poetry
 - [ ] write a dockerfile
+- [ ] Do as much as possible in ram
 
 In more human readable terms what needs to happen when someone wants to submit a new song:
 1. The user triggers the bot to add a new song. The bot should take either a file upload or a link to some video service for this
