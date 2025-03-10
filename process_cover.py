@@ -2,17 +2,43 @@ import numpy as np
 from PIL import Image
 import io
 
-def resize_image_data(image: bytes) -> bytes:
+def preprocess_image(image: Image.Image, w: int, h: int, resample=Image.NEAREST) -> Image.Image:
+    image.copy()
+
+    image.thumbnail((w, h), resample=resample)
+    if image.width == w and image.height == h:
+        return image
+    else:
+        avg_color = get_average_color(image)
+        padded_img = Image.new("RGBA", (w, h), avg_color)
+        paste_position = ((w-image.width)//2, (h-image.height)//2)
+        padded_img.paste(image, paste_position)
+        return padded_img
+
+def resize_image_for_cover(image: Image.Image) -> Image.Image:
     # Open the image from the bytes
-    img = Image.open(io.BytesIO(image))
-    img = img.resize((16, 16))  # Resize to 16x16
-    img_data = img.convert("RGBA").tobytes()  # Get the RGBA data
-    return img_data
+    img = image.copy()
+    img = preprocess_image(img, 32, 18)
+    img = preprocess_image(img, 16, 16)
+    return img
+
+def get_average_color(img: Image) -> tuple:
+    # Convert the image to RGB if it's not already
+    img = img.convert("RGB")
+    
+    # Get the image pixels
+    pixels = list(img.getdata())
+    
+    # Calculate the average color
+    r = sum(p[0] for p in pixels) // len(pixels)
+    g = sum(p[1] for p in pixels) // len(pixels)
+    b = sum(p[2] for p in pixels) // len(pixels)
+    
+    return (r, g, b, 255)  # Return the color as RGBA (with full alpha)
 
 def process_template(template_bytes: bytes, thumb_data: bytes) -> bytes:
         # Open the template image
         template_img = Image.open(io.BytesIO(template_bytes))
-        template_img = template_img.resize((16, 16))  # Resize to 16x16
         img_data = template_img.convert("RGBA")
 
         # Modify the image data according to the thumb_data
@@ -34,7 +60,7 @@ def process_template(template_bytes: bytes, thumb_data: bytes) -> bytes:
 
 def adapt_image_to_disc(image: bytes, fragment_template: bytes, disc_template: bytes) -> dict:
     # Get the thumb data
-    thumb_data = resize_image_data(image)
+    thumb_data = resize_image_for_cover(Image.open(io.BytesIO(image))).tobytes()
 
     # Process both the fragment and disc textures
     fragment_texture = process_template(fragment_template, thumb_data)
