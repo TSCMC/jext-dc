@@ -2,18 +2,14 @@ import numpy as np
 from PIL import Image
 import io
 
-def adapt_image_to_disc(image: bytes, fragment_template: bytes, disc_template: bytes) -> dict:
-    def get_image_data(image: bytes) -> bytes:
-        # Open the image from the bytes
-        img = Image.open(io.BytesIO(image))
-        img = img.resize((16, 16))  # Resize to 16x16
-        img_data = img.convert("RGBA").tobytes()  # Get the RGBA data
-        return img_data
-    
-    # Get the thumb data
-    thumb_data = get_image_data(image)
+def resize_image_data(image: bytes) -> bytes:
+    # Open the image from the bytes
+    img = Image.open(io.BytesIO(image))
+    img = img.resize((16, 16))  # Resize to 16x16
+    img_data = img.convert("RGBA").tobytes()  # Get the RGBA data
+    return img_data
 
-    def process_template(template_bytes: bytes, thumb_data: bytes) -> bytes:
+def process_template(template_bytes: bytes, thumb_data: bytes) -> bytes:
         # Open the template image
         template_img = Image.open(io.BytesIO(template_bytes))
         template_img = template_img.resize((16, 16))  # Resize to 16x16
@@ -36,6 +32,10 @@ def adapt_image_to_disc(image: bytes, fragment_template: bytes, disc_template: b
             img_data.save(output, format="PNG")
             return output.getvalue()
 
+def adapt_image_to_disc(image: bytes, fragment_template: bytes, disc_template: bytes) -> dict:
+    # Get the thumb data
+    thumb_data = resize_image_data(image)
+
     # Process both the fragment and disc textures
     fragment_texture = process_template(fragment_template, thumb_data)
     disc_texture = process_template(disc_template, thumb_data)
@@ -44,18 +44,6 @@ def adapt_image_to_disc(image: bytes, fragment_template: bytes, disc_template: b
         'discTexture': disc_texture,
         'fragmentTexture': fragment_texture
     }
-
-
-
-def save_as_bmp(image_data: np.ndarray, output_path: str):
-    # Reshape the flattened array back to a 16x16 image with 4 channels (RGBA)
-    img_reshaped = image_data.reshape((16, 16, 4))
-
-    # Create a Pillow image from the NumPy array (RGBA format)
-    img_pil = Image.fromarray(img_reshaped, 'RGBA')
-
-    # Save the image as a BMP file
-    img_pil.save(output_path, 'BMP')
 
 def save_textures(result: dict, disc_path: str, fragment_path: str) -> None:
     # Save the disc texture to a file
@@ -66,14 +54,15 @@ def save_textures(result: dict, disc_path: str, fragment_path: str) -> None:
     with open(fragment_path, "wb") as f:
         f.write(result['fragmentTexture'])
 
-with open("maxresdefault.jpg", "rb") as f:
-    image_bytes = f.read()
+if __name__ == '__main__':
+    with open("maxresdefault.jpg", "rb") as f:
+        image_bytes = f.read()
 
-with open("fragment_template.webp", "rb") as f:
-    fragment_template_bytes = f.read()
+    with open("fragment_template.webp", "rb") as f:
+        fragment_template_bytes = f.read()
 
-with open("disc_template.webp", "rb") as f:
-    disc_template_bytes = f.read()
+    with open("disc_template.webp", "rb") as f:
+        disc_template_bytes = f.read()
 
-result = adapt_image_to_disc(image_bytes, fragment_template_bytes, disc_template_bytes)
-save_textures(result, "disc_texture.png", "fragment_texture.png")
+    result = adapt_image_to_disc(image_bytes, fragment_template_bytes, disc_template_bytes)
+    save_textures(result, "disc_texture.png", "fragment_texture.png")
