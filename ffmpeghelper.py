@@ -48,20 +48,42 @@ else:
 
 USE_VBR = has_at or has_libfdk
 
-async def encode_preview(in_file: str | bytes) -> bytes:
+async def encode_preview(in_file: str | bytes, 
+                         start_time_str: str | None = None, 
+                         end_time_str: str | None = None
+                         ) -> bytes:
     return await _encode(in_file, preview=True)
 
-async def encode_output(in_file: str | bytes, out_file: Optional[str]) -> Optional[bytes]:
+async def encode_output(in_file: str | bytes, 
+                        out_file: Optional[str], 
+                        start_time_str: str | None = None, 
+                        end_time_str: str | None = None
+                        ) -> Optional[bytes]:
     return await _encode(in_file, out_file, preview=False)
 
-async def _encode(in_file: str | bytes, out_file: Optional[str] = None, preview: bool = False) -> Optional[bytes]:
+async def _encode(in_file: str | bytes, 
+                  out_file: Optional[str] = None, 
+                  preview: bool = False,
+                  start_time_str: str | None = None,
+                  end_time_str: str | None = None
+                  ) -> Optional[bytes]:
     # Preview should use format adts for .aac file format outout
     # Output should use format ogg for .ogg file format output
     
     # Set basic options
-    cmd = [FFMPEG_CMD, '-hide_banner', '-loglevel', 'quiet', '-i']
+    cmd = [
+        FFMPEG_CMD, # ffmpeg command
+        '-hide_banner', # hide banner that shows compiler settings for current binary
+        '-loglevel', 'quiet' # supress console output
+        ]
+    
+    if(start_time_str):
+        cmd.extend([
+            '-ss', start_time_str # input seeking to specified time 
+        ])
     
     # Input file option
+    cmd.append('-i')
     stdin = None
     if type(in_file) == str:
         cmd.append(in_file)
@@ -72,16 +94,31 @@ async def _encode(in_file: str | bytes, out_file: Optional[str] = None, preview:
         raise TypeError('ffmpeg input file should be bytes or str')
     
     # Encoding options
+    if end_time_str:
+        cmd.extend([
+            '-to', end_time_str # specify end of audio file time
+        ])
+
     cmd.extend([
         '-vn', # Drop all video streams (including embedded images)
         '-ac', '1', # Downmix to mono for minecraft record format
-        '-c:a', (PREVIEW_ENCODER if preview else OUTPUT_ENCODER), # set encoder to use
-        ('-b:a' if preview and not USE_VBR else '-q:a'), # set bitrate control mode
-        (PREVIEW_QUALITY if preview else OUTPUT_QUALITY), # set bitrate / quality setting
         '-map_metadata', '-1', # drop all metadata from input
-        '-f', ('adts' if preview else 'ogg') # set output container format
     ])
 
+    if preview:
+        cmd.extend([
+            '-c:a', PREVIEW_ENCODER, # Set encoder to preview encoder
+            ('-q:a' if USE_VBR else '-b:a'), PREVIEW_QUALITY, # set preview bitrate control mode and quality 
+            '-f', 'adts' # 'adts' for '.aac' format file output for preview
+        ])
+
+    else:
+        cmd.extend([
+            '-c:a', OUTPUT_ENCODER, # Set encoder to output encoder
+            '-q:a', OUTPUT_QUALITY, # Set output quality
+            '-f', 'ogg' # 'ogg' for '.ogg' format
+        ])    
+    
     # Output options
     stdout = None
     if out_file is None:
