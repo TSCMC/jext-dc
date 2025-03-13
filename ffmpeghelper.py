@@ -14,9 +14,7 @@ FFMPEG_CMD = "ffmpeg"
 OUTPUT_ENCODER = 'libvorbis'
 OUTPUT_QUALITY = '3'
 
-'''
-Get info about ffmpeg codecs
-'''
+# get info about available ffmpeg encoders
 
 has_vorbis = False
 has_libfdk = False
@@ -35,19 +33,28 @@ for i in info_res.stdout.splitlines():
         has_at = True
 
 if has_at:
+    # aac_at is best quality but only available on macos, should use for previews if available
     PREVIEW_ENCODER = 'aac_at'
     PREVIEW_QUALITY = '11'
 
 elif has_libfdk:
+    # libfdk_aac is best quality after aac_at and available for all platforms
+    # should use for previews if available
     PREVIEW_ENCODER = 'libfdk_aac'
     PREVIEW_QUALITY = '4'
 
 else:
+    # fallback to ffmpeg native aac encoder for previews(worst quality)
     PREVIEW_ENCODER = 'aac'
     PREVIEW_QUALITY = '80k'
 
 USE_VBR = has_at or has_libfdk
 
+if not has_vorbis:
+    pass
+    # TODO: Raise something and make the program refuse to stop if there is no libvorbis
+    # ffmpeg can be compiled without libvorbis so need to check for that
+    
 async def encode_preview(in_file: str | bytes, 
                          start_time_str: str | None = None, 
                          end_time_str: str | None = None
