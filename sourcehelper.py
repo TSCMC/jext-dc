@@ -5,6 +5,7 @@ import mutagen.m4a
 import mutagen.ogg
 import mutagen.mp4
 from typing import Optional
+import io
 
 class trackData:
     def __init__(self, title: Optional[str] = None, 
@@ -32,6 +33,7 @@ class trackData:
         return bool(self.audio)
 
 def get_metadata_from_file(file_bytes: bytes) -> trackData:
+    file_bytes = io.BytesIO(file_bytes)
     file = mutagen.File(file_bytes)
     
     data = trackData()
@@ -68,3 +70,25 @@ def get_metadata_from_file(file_bytes: bytes) -> trackData:
                     
 
     return data
+
+if __name__ == "__main__":
+    from PIL import Image
+    from sys import argv
+
+    if len(argv) > 1:
+        file = argv[1]
+        print(file)
+        with open(file, 'rb') as fileobj:
+            filebytes = fileobj.read()
+        
+        trackdata = get_metadata_from_file(filebytes)
+        print(f'Title:  {trackdata.title}')
+        print(f'Artist: {trackdata.artist}')
+        if trackdata.cover:
+            img = Image.open(io.BytesIO(trackdata.cover))
+            img.show()
+        else:
+            print('There is no cover image on this track.')
+
+    else:
+        print('No Input Provided!')
